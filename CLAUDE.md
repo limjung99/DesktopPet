@@ -21,7 +21,7 @@
 
 Go로 작성한 Windows(10/11) 전용 데스크톱 펫이다. 소스는 `src/*.go`이고, 하나의 `package main`을 기능별 파일로 나눴다. `syscall.NewLazyDLL`로 Win32 API를 직접 호출하므로 cgo, 외부 모듈, 런타임 의존성이 없다.
 
-저장소 루트에는 배포용 묶음(`DesktopPet.exe`, `pet.ini`, `lines.txt`, `README.txt`)이 있고, `src/`에 소스가 있다.
+저장소 루트에는 배포용 묶음(`DesktopPet.exe`, `pet.ini`, `lines.txt`, `README.md`)이 있고, `src/`에 소스가 있다.
 
 git 저장소, 테스트 코드, 린터 설정은 없다.
 
