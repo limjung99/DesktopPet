@@ -13,6 +13,7 @@ var (
 	gdi32  = syscall.NewLazyDLL("gdi32.dll")
 	kernel = syscall.NewLazyDLL("kernel32.dll")
 	shcore = syscall.NewLazyDLL("shcore.dll")
+	shell  = syscall.NewLazyDLL("shell32.dll")
 
 	pRegisterClassExW     = user32.NewProc("RegisterClassExW")
 	pCreateWindowExW      = user32.NewProc("CreateWindowExW")
@@ -54,9 +55,14 @@ var (
 	pEndPaint             = user32.NewProc("EndPaint")
 	pInvalidateRect       = user32.NewProc("InvalidateRect")
 	pFillRect             = user32.NewProc("FillRect")
-	pCreateMutexW         = kernel.NewProc("CreateMutexW")
-	pGetModuleHandleW     = kernel.NewProc("GetModuleHandleW")
-	pSetDpiAwareness      = shcore.NewProc("SetProcessDpiAwareness")
+	pMessageBoxW          = user32.NewProc("MessageBoxW")
+
+	pDragQueryFileW   = shell.NewProc("DragQueryFileW")
+	pDragFinish       = shell.NewProc("DragFinish")
+	pSHFileOperationW = shell.NewProc("SHFileOperationW")
+	pCreateMutexW     = kernel.NewProc("CreateMutexW")
+	pGetModuleHandleW = kernel.NewProc("GetModuleHandleW")
+	pSetDpiAwareness  = shcore.NewProc("SetProcessDpiAwareness")
 
 	pCreateCompatibleDC = gdi32.NewProc("CreateCompatibleDC")
 	pCreateDIBSection   = gdi32.NewProc("CreateDIBSection")
@@ -90,6 +96,7 @@ const (
 	WM_DISPLAYCHANGE  = 0x007E
 	WM_KEYDOWN        = 0x0100
 	WM_COMMAND        = 0x0111
+	WM_DROPFILES      = 0x0233
 	WM_TIMER          = 0x0113
 	WM_MOUSEMOVE      = 0x0200
 	WM_LBUTTONDOWN    = 0x0201
@@ -106,6 +113,7 @@ const (
 const (
 	WS_POPUP                      = 0x80000000
 	WS_EX_TOPMOST                 = 0x8
+	WS_EX_ACCEPTFILES             = 0x10
 	WS_EX_TOOLWINDOW              = 0x80
 	WS_EX_LAYERED                 = 0x80000
 	WS_EX_NOACTIVATE              = 0x08000000
@@ -143,6 +151,23 @@ const (
 	IDC_ARROW           = 32512
 	SRCCOPY             = 0x00CC0020
 	NULL_PEN            = 8
+)
+
+// 파일 드롭, 휴지통, 메시지 박스
+const (
+	DRAGQUERY_COUNT     = 0xFFFFFFFF // DragQueryFileW: 파일 개수를 묻는 인덱스
+	FO_DELETE           = 0x3
+	FOF_SILENT          = 0x4    // 진행률 창 없음
+	FOF_NOCONFIRMATION  = 0x10   // 확인 창 없음
+	FOF_ALLOWUNDO       = 0x40   // 영구 삭제 대신 휴지통으로
+	FOF_NOERRORUI       = 0x400  // 오류 창 없음
+	FOF_WANTNUKEWARNING = 0x4000 // 휴지통에 못 넣고 영구 삭제하게 되면 그때는 경고
+	MB_YESNO            = 0x4
+	MB_ICONQUESTION     = 0x20
+	MB_DEFBUTTON2       = 0x100
+	MB_SETFOREGROUND    = 0x10000
+	MB_TOPMOST          = 0x40000
+	IDYES               = 6
 )
 
 // 메뉴
@@ -211,6 +236,18 @@ type paintStruct struct {
 	Restore   int32
 	IncUpdate int32
 	Reserved  [32]byte
+}
+
+// SHFILEOPSTRUCTW (64비트 배치)
+type shFileOp struct {
+	Hwnd         uintptr
+	Func         uint32
+	From         *uint16 // 경로마다 NUL로 끝나고 전체는 NUL 두 개로 끝난다
+	To           *uint16
+	Flags        uint16
+	Aborted      int32 // 사용자가 중간에 취소했는지
+	NameMappings uintptr
+	Title        *uint16
 }
 type blendFunc struct{ Op, Flags, Alpha, Format byte }
 

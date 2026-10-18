@@ -74,6 +74,10 @@ Win32를 쓰지 않는 로직(예: `sprite.go`의 스케일링·합성)은 파�
   - 입력창의 Enter는 `runMessageLoop`에서 `handleChatEnter`로 가로채 전송한다(서브클래싱 없음).
   - LLM 호출(`chat_llm.go`)은 고루틴에서 하고, 결과는 `chatInbox`에 넣은 뒤 `PostMessageW(msgChatReply)`로 UI 스레드에 알린다. Win32 호출은 UI 스레드에서만 한다.
   - API 스펙은 미정이라 요청/응답 형식은 임시다. 확정되면 `buildLLMRequest`, `parseLLMReply`만 고친다. `chat.ini`(키 포함)는 `.gitignore`에 있고 예시는 `chat.ini.example`이다.
+- **파일 드롭 → 휴지통**
+  - 펫 창은 `WS_EX_ACCEPTFILES`라서 탐색기에서 파일을 놓으면 `WM_DROPFILES`를 받는다(`dropfiles.go`). 이 핸들러는 `DragQueryFileW`로 경로만 꺼내 `p.droppedPaths`에 두고 `DragFinish` 후 `msgTrashRequest`를 `PostMessageW`로 미룬다. 핸들러 안에서 대화상자를 띄우면 탐색기가 멈추기 때문이다.
+  - `handleTrashRequest`가 보호 경로(드라이브 루트, `%SystemRoot%` 안)를 거르고 `MessageBoxW`(기본 "아니오")로 확인한 뒤 `moveToTrash`(`trash.go`)를 부른다.
+  - `SHFileOperationW`는 `FO_DELETE|FOF_ALLOWUNDO`로 휴지통에 보낸다. `pFrom`은 `경로\0경로\0\0` 형식이어야 해서 `doubleNulPaths`로 만든다. `FOF_NOCONFIRMATION`을 쓰므로 휴지통에 못 넣는 경우를 위해 `FOF_WANTNUKEWARNING`을 함께 준다.
 - **설정**: exe 폴더의 `pet.ini`(`scale`은 0.2~5로 제한, `walk_speed`, `talk_chance`)와 `lines.txt`(UTF-8, 한 줄에 하나, `#` 주석, BOM 제거)를 읽는다. 파일이 없으면 기본값을 쓴다.
 - **단일 실행**: 이름 있는 뮤텍스 `Local\DesktopPetSingleInstance`로 중복 실행을 막는다.
 - `syscall.NewCallback`은 만들 수 있는 개수에 전역 제한이 있다. 콜백(예: `monitorCB`)은 한 번만 만들어 재사용하고, 호출할 때마다 새로 만들지 않는다.

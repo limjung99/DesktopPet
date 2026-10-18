@@ -40,6 +40,9 @@ type pet struct {
 	grabDX, grabDY     float64
 	hist               []point // 던지기 속도 계산용 최근 커서 위치
 
+	// 드롭된 파일 중 휴지통 확인을 기다리는 경로
+	droppedPaths []string
+
 	// 말풍선
 	bubble      *sprite
 	bubbleUntil time.Time

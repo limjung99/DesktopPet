@@ -16,7 +16,7 @@ const (
 func createPetWindow(w, h int) uintptr {
 	inst, _, _ := pGetModuleHandleW.Call(0)
 	cls := registerPetWindowClass(inst)
-	const exStyle = WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
+	const exStyle = WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_ACCEPTFILES
 	hwnd, _, _ := pCreateWindowExW.Call(exStyle, uintptr(unsafe.Pointer(cls)), uintptr(unsafe.Pointer(u16("Desktop Pet"))),
 		WS_POPUP, 0, 0, uintptr(w), uintptr(h), 0, 0, inst, 0)
 	return hwnd
@@ -74,6 +74,12 @@ func wndProc(hwnd, m, wp, lp uintptr) uintptr {
 		if P.pressing {
 			P.onUp()
 		}
+		return 0
+	case WM_DROPFILES:
+		P.onDropFiles(wp)
+		return 0
+	case msgTrashRequest:
+		P.handleTrashRequest()
 		return 0
 	case WM_RBUTTONUP:
 		P.onMenu()
