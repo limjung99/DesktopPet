@@ -17,8 +17,15 @@ var (
 	cfgTalkChance = 0.15
 )
 
+// chat.ini (LLM 연동 설정). 엔드포인트가 비어 있으면 데모 응답만 한다
+var (
+	cfgLLMEndpoint   = ""
+	cfgLLMAPIKey     = ""
+	cfgLLMTimeoutSec = 60.0
+)
+
 var defaultLines = []string{"안녕!", "오늘도 화이팅!", "심심해~", "커피 한 잔 어때요?",
-	"물 마실 시간!", "스트레칭 해요", "뭐 하고 있어?", "졸려..."}
+	"물 마실 시간!", "스트레칭 해요", "뭐 하고 있어?", "졸려...", "정환쿤 사랑해!"}
 
 // 실행 파일이 있는 폴더 (설정·스프라이트 탐색 기준)
 func exeDir() string {
@@ -101,5 +108,44 @@ func applyIniValue(key string, val float64) {
 		cfgWalkSpeed = val
 	case "talk_chance":
 		cfgTalkChance = val
+	}
+}
+
+// chat.ini → cfgLLM* 전역값 갱신. 파일이 없으면 기본값 유지
+func loadChatIni() {
+	raw, ok := readConfigLines("chat.ini")
+	if !ok {
+		return
+	}
+	for _, l := range raw {
+		if key, val, ok := parseTextIniLine(l); ok {
+			applyChatIniValue(key, val)
+		}
+	}
+}
+
+// "key=문자열" 한 줄 해석. ; 또는 # 으로 시작하는 주석 줄과 형식이 맞지 않는 줄은 ok=false
+func parseTextIniLine(line string) (key, val string, ok bool) {
+	line = strings.TrimSpace(line)
+	if strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+		return "", "", false
+	}
+	k, v, found := strings.Cut(line, "=")
+	if !found {
+		return "", "", false
+	}
+	return strings.ToLower(strings.TrimSpace(k)), strings.TrimSpace(v), true
+}
+
+func applyChatIniValue(key, val string) {
+	switch key {
+	case "llm_endpoint":
+		cfgLLMEndpoint = val
+	case "llm_api_key":
+		cfgLLMAPIKey = val
+	case "llm_timeout_sec":
+		if sec, err := strconv.ParseFloat(val, 64); err == nil && sec > 0 {
+			cfgLLMTimeoutSec = sec
+		}
 	}
 }

@@ -27,7 +27,7 @@ func registerPetWindowClass(inst uintptr) *uint16 {
 	cur, _, _ := pLoadCursorW.Call(0, IDC_HAND)
 	cls := u16("DesktopPetWnd")
 	wc := wndClassEx{Size: uint32(unsafe.Sizeof(wndClassEx{})), WndProc: syscall.NewCallback(wndProc),
-		Instance: inst, Cursor: cur, ClassName: cls}
+		Style: CS_DBLCLKS, Instance: inst, Cursor: cur, ClassName: cls}
 	pRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
 	return cls
 }
@@ -45,6 +45,9 @@ func runMessageLoop() {
 		if int32(r) <= 0 {
 			break
 		}
+		if handleChatEnter(&m) {
+			continue
+		}
 		pTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
 		pDispatchMessageW.Call(uintptr(unsafe.Pointer(&m)))
 	}
@@ -57,6 +60,9 @@ func wndProc(hwnd, m, wp, lp uintptr) uintptr {
 		return 0
 	case WM_LBUTTONDOWN:
 		P.onDown()
+		return 0
+	case WM_LBUTTONDBLCLK:
+		P.openChat()
 		return 0
 	case WM_MOUSEMOVE:
 		P.onMove()

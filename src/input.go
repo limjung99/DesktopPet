@@ -1,7 +1,7 @@
 package main
 
 // ───────────── 마우스 입력 ─────────────
-// 왼쪽 클릭 = 점프 + 말풍선 / 드래그 = 집어서 던지기 / 오른쪽 클릭 = 메뉴
+// 왼쪽 클릭 = 점프 + 말풍선 / 더블클릭 = 대화 창 / 드래그 = 집어서 던지기 / 오른쪽 클릭 = 메뉴
 
 import (
 	"math"
@@ -12,6 +12,7 @@ const (
 	menuSay  = 1
 	menuJump = 2
 	menuQuit = 3
+	menuChat = 4
 )
 
 func cursor() point { var pt point; pGetCursorPos.Call(uintptr(unsafe.Pointer(&pt))); return pt }
@@ -112,6 +113,7 @@ func (p *pet) onMenu() {
 func (p *pet) showContextMenu() uintptr {
 	m, _, _ := pCreatePopupMenu.Call()
 	defer pDestroyMenu.Call(m)
+	pAppendMenuW.Call(m, MF_STRING, menuChat, uintptr(unsafe.Pointer(u16("대화하기"))))
 	pAppendMenuW.Call(m, MF_STRING, menuSay, uintptr(unsafe.Pointer(u16("말하기"))))
 	pAppendMenuW.Call(m, MF_STRING, menuJump, uintptr(unsafe.Pointer(u16("점프"))))
 	pAppendMenuW.Call(m, MF_SEPARATOR, 0, 0)
@@ -124,6 +126,8 @@ func (p *pet) showContextMenu() uintptr {
 
 func (p *pet) handleMenuCommand(cmd uintptr) {
 	switch cmd {
+	case menuChat:
+		p.openChat()
 	case menuSay:
 		p.sayRandom()
 	case menuJump:

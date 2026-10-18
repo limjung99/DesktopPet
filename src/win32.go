@@ -42,6 +42,18 @@ var (
 	pGetMonitorInfoW      = user32.NewProc("GetMonitorInfoW")
 	pSetProcessDPIAware   = user32.NewProc("SetProcessDPIAware")
 	pDrawTextW            = user32.NewProc("DrawTextW")
+	pPostMessageW         = user32.NewProc("PostMessageW")
+	pSendMessageW         = user32.NewProc("SendMessageW")
+	pGetClientRect        = user32.NewProc("GetClientRect")
+	pMoveWindow           = user32.NewProc("MoveWindow")
+	pSetFocus             = user32.NewProc("SetFocus")
+	pGetWindowTextLengthW = user32.NewProc("GetWindowTextLengthW")
+	pGetWindowTextW       = user32.NewProc("GetWindowTextW")
+	pSetWindowTextW       = user32.NewProc("SetWindowTextW")
+	pBeginPaint           = user32.NewProc("BeginPaint")
+	pEndPaint             = user32.NewProc("EndPaint")
+	pInvalidateRect       = user32.NewProc("InvalidateRect")
+	pFillRect             = user32.NewProc("FillRect")
 	pCreateMutexW         = kernel.NewProc("CreateMutexW")
 	pGetModuleHandleW     = kernel.NewProc("GetModuleHandleW")
 	pSetDpiAwareness      = shcore.NewProc("SetProcessDpiAwareness")
@@ -56,20 +68,38 @@ var (
 	pSetBkMode          = gdi32.NewProc("SetBkMode")
 	pGetDeviceCaps      = gdi32.NewProc("GetDeviceCaps")
 	pGdiFlush           = gdi32.NewProc("GdiFlush")
+
+	pCreateCompatibleBitmap = gdi32.NewProc("CreateCompatibleBitmap")
+	pBitBlt                 = gdi32.NewProc("BitBlt")
+	pCreateSolidBrush       = gdi32.NewProc("CreateSolidBrush")
+	pRoundRect              = gdi32.NewProc("RoundRect")
+	pGetStockObject         = gdi32.NewProc("GetStockObject")
 )
 
 // 윈도우 메시지
 const (
 	WM_DESTROY        = 0x0002
+	WM_SIZE           = 0x0005
+	WM_SETFOCUS       = 0x0007
+	WM_PAINT          = 0x000F
+	WM_CLOSE          = 0x0010
+	WM_ERASEBKGND     = 0x0014
+	WM_SETFONT        = 0x0030
 	WM_SETTINGCHANGE  = 0x001A
 	WM_MOUSEACTIVATE  = 0x0021
 	WM_DISPLAYCHANGE  = 0x007E
+	WM_KEYDOWN        = 0x0100
+	WM_COMMAND        = 0x0111
 	WM_TIMER          = 0x0113
 	WM_MOUSEMOVE      = 0x0200
 	WM_LBUTTONDOWN    = 0x0201
 	WM_LBUTTONUP      = 0x0202
+	WM_LBUTTONDBLCLK  = 0x0203
 	WM_RBUTTONUP      = 0x0205
+	WM_MOUSEWHEEL     = 0x020A
 	WM_CAPTURECHANGED = 0x0215
+	WM_APP            = 0x8000
+	VK_RETURN         = 0x0D
 )
 
 // 창 스타일 / 표시 / 위치
@@ -95,6 +125,26 @@ const (
 	PROCESS_PER_MONITOR_DPI_AWARE = 2
 )
 
+// 일반 창(채팅 창)과 자식 컨트롤
+const (
+	CS_DBLCLKS          = 0x8
+	WS_OVERLAPPEDWINDOW = 0x00CF0000
+	WS_CLIPCHILDREN     = 0x02000000
+	WS_CHILD            = 0x40000000
+	WS_VISIBLE          = 0x10000000
+	WS_TABSTOP          = 0x00010000
+	WS_EX_CLIENTEDGE    = 0x200
+	ES_AUTOHSCROLL      = 0x80
+	BS_DEFPUSHBUTTON    = 0x1
+	CW_USEDEFAULT       = 0x80000000
+	SW_HIDE             = 0
+	SW_SHOW             = 5
+	SW_RESTORE          = 9
+	IDC_ARROW           = 32512
+	SRCCOPY             = 0x00CC0020
+	NULL_PEN            = 8
+)
+
 // 메뉴
 const (
 	MF_STRING       = 0x0
@@ -105,6 +155,7 @@ const (
 
 // GDI 텍스트
 const (
+	DT_LEFT           = 0x0
 	DT_CENTER         = 0x1
 	DT_WORDBREAK      = 0x10
 	DT_CALCRECT       = 0x400
@@ -152,6 +203,14 @@ type bitmapInfoHeader struct {
 	YPelsPerMeter int32
 	ClrUsed       uint32
 	ClrImportant  uint32
+}
+type paintStruct struct {
+	Hdc       uintptr
+	Erase     int32
+	RcPaint   rect
+	Restore   int32
+	IncUpdate int32
+	Reserved  [32]byte
 }
 type blendFunc struct{ Op, Flags, Alpha, Format byte }
 

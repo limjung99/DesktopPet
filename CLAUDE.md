@@ -2,10 +2,6 @@
 
 이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 안내서입니다.
 
-## 응답 언어
-
-- **항상 한국어로 응답한다.** 사용자가 영어(또는 다른 언어)로 질문해도 한국어로 답한다.
-- 코드 주석과 사용자에게 보이는 문자열(말풍선 대사, 메뉴 등)도 한국어로 쓴다.
 
 ## 작업 규칙
 
@@ -72,6 +68,12 @@ Win32를 쓰지 않는 로직(예: `sprite.go`의 스케일링·합성)은 파�
   - `snapInside`는 모니터 사이 빈 공간이나 화면 밖에 있을 때 가장 가까운 작업 영역 안으로 끌어온다.
   - `fall/jump` 중에는 의도적으로 Y를 X보다 먼저 움직인다. 그래야 점프로 옆 모니터의 더 높은 바닥에 올라설 수 있다.
 - **DPI**: 프로세스는 모니터별 DPI 인식 모드다. `p.dpi`(시스템 DPI / 96)로 크기, 속도, 중력을 조절한다. 중력은 `sqrt(dpi)`에 비례한다.
+- **대화(챗봇)**
+  - 펫 더블클릭(`WM_LBUTTONDBLCLK`)이나 메뉴 "대화하기"로 일반 최상위 창(`chat_window.go`)을 연다. 입력창은 `EDIT`, 전송은 `BUTTON` 자식 컨트롤이다.
+  - 대화 말풍선 목록은 `chat_view.go`가 메모리 DC에 직접 그려 한 번에 복사한다. 창을 닫으면 파괴하지 않고 숨겨서 대화를 유지한다.
+  - 입력창의 Enter는 `runMessageLoop`에서 `handleChatEnter`로 가로채 전송한다(서브클래싱 없음).
+  - LLM 호출(`chat_llm.go`)은 고루틴에서 하고, 결과는 `chatInbox`에 넣은 뒤 `PostMessageW(msgChatReply)`로 UI 스레드에 알린다. Win32 호출은 UI 스레드에서만 한다.
+  - API 스펙은 미정이라 요청/응답 형식은 임시다. 확정되면 `buildLLMRequest`, `parseLLMReply`만 고친다. `chat.ini`(키 포함)는 `.gitignore`에 있고 예시는 `chat.ini.example`이다.
 - **설정**: exe 폴더의 `pet.ini`(`scale`은 0.2~5로 제한, `walk_speed`, `talk_chance`)와 `lines.txt`(UTF-8, 한 줄에 하나, `#` 주석, BOM 제거)를 읽는다. 파일이 없으면 기본값을 쓴다.
 - **단일 실행**: 이름 있는 뮤텍스 `Local\DesktopPetSingleInstance`로 중복 실행을 막는다.
 - `syscall.NewCallback`은 만들 수 있는 개수에 전역 제한이 있다. 콜백(예: `monitorCB`)은 한 번만 만들어 재사용하고, 호출할 때마다 새로 만들지 않는다.
