@@ -6,7 +6,6 @@ package main
 import (
 	"strings"
 	"sync"
-	"syscall"
 	"unsafe"
 )
 
@@ -50,7 +49,7 @@ func (c *chatWindow) show() {
 
 // 입력창의 글자를 보낸다. 빈 입력이거나 답변을 기다리는 중이면 무시
 func (c *chatWindow) submit() {
-	text := strings.TrimSpace(c.editText())
+	text := strings.TrimSpace(windowText(c.edit))
 	if text == "" || c.pending {
 		return
 	}
@@ -59,19 +58,12 @@ func (c *chatWindow) submit() {
 	pSetWindowTextW.Call(c.edit, uintptr(unsafe.Pointer(u16(""))))
 	pSetFocus.Call(c.edit)
 	c.redraw()
-	go requestReply(c.hwnd, append([]chatMessage(nil), c.msgs...))
-}
-
-func (c *chatWindow) editText() string {
-	n, _, _ := pGetWindowTextLengthW.Call(c.edit)
-	buf := make([]uint16, n+1)
-	pGetWindowTextW.Call(c.edit, uintptr(unsafe.Pointer(&buf[0])), n+1)
-	return syscall.UTF16ToString(buf)
+	go requestReply(c.hwnd, append([]chatMessage(nil), c.msgs...), llmAPIKey)
 }
 
 // (고루틴) LLM 답변을 받아 보관함에 넣고 창에 알린다. 실패하면 오류 문구가 답변이 된다
-func requestReply(hwnd uintptr, history []chatMessage) {
-	text, err := askLLM(history)
+func requestReply(hwnd uintptr, history []chatMessage, apiKey string) {
+	text, err := askLLM(history, apiKey)
 	if err != nil {
 		text = "⚠ " + err.Error()
 	}

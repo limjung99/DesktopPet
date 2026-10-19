@@ -73,7 +73,8 @@ Win32를 쓰지 않는 로직(예: `sprite.go`의 스케일링·합성)은 파�
   - 대화 말풍선 목록은 `chat_view.go`가 메모리 DC에 직접 그려 한 번에 복사한다. 창을 닫으면 파괴하지 않고 숨겨서 대화를 유지한다.
   - 입력창의 Enter는 `runMessageLoop`에서 `handleChatEnter`로 가로채 전송한다(서브클래싱 없음).
   - LLM 호출(`chat_llm.go`)은 고루틴에서 하고, 결과는 `chatInbox`에 넣은 뒤 `PostMessageW(msgChatReply)`로 UI 스레드에 알린다. Win32 호출은 UI 스레드에서만 한다.
-  - API 스펙은 미정이라 요청/응답 형식은 임시다. 확정되면 `buildLLMRequest`, `parseLLMReply`만 고친다. `chat.ini`(키 포함)는 `.gitignore`에 있고 예시는 `chat.ini.example`이다.
+  - 엔드포인트·모델은 `chat_llm.go`의 상수다. 요청은 `{"model","messages","stream":false}`이고, 응답은 OpenAI 호환/Ollama 형식을 모두 받으며 `<think>` 블록을 지운다.
+  - API 키는 설정 파일로 받지 않는다. 저장된 키가 없으면 시작할 때 키 입력 창(`apikey_window.go`)을 띄우고, `%APPDATA%\DesktopPet\llm_api_key.bin`에 DPAPI로 암호화해 둔다(`apikey_store.go`). 메뉴 "API 키 설정"으로 바꿀 수 있다.
 - **설정**: exe 폴더의 `pet.ini`(`scale`은 0.2~5로 제한, `walk_speed`, `talk_chance`)와 `lines.txt`(UTF-8, 한 줄에 하나, `#` 주석, BOM 제거)를 읽는다. 파일이 없으면 기본값을 쓴다.
 - **단일 실행**: 이름 있는 뮤텍스 `Local\DesktopPetSingleInstance`로 중복 실행을 막는다.
 - `syscall.NewCallback`은 만들 수 있는 개수에 전역 제한이 있다. 콜백(예: `monitorCB`)은 한 번만 만들어 재사용하고, 호출할 때마다 새로 만들지 않는다.

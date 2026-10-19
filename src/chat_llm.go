@@ -1,8 +1,12 @@
 package main
 
 // ───────────── 사내 LLM API 호출 ─────────────
-// 엔드포인트와 요청/응답 형식은 아직 확정되지 않았다.
-// 스펙이 정해지면 buildLLMRequest, parseLLMReply 두 함수만 고치면 된다.
+// 요청: POST llmEndpoint, Content-Type: application/json, Authorization: Bearer {API 키}
+//
+//	{"model":"Qwen-Inference-Think","messages":[{"role":"user","content":"..."}],"stream":false}
+//
+// 응답은 OpenAI 호환(choices[0].message.content)과 Ollama(message.content)를 모두 받는다.
+// API 키는 첫 실행 때 입력받아 암호화해 둔다(apikey_store.go, apikey_window.go).
 
 import (
 	"bytes"
@@ -11,45 +15,59 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 )
+
+const (
+	llmEndpoint = "https://ollama.ai.koscom.co.kr"
+	llmModel    = "Qwen-Inference-Think"
+	llmTimeout  = 60 * time.Second
+)
+
+// 저장된 API 키. 시작할 때 loadAPIKey로 읽고, 키 입력 창에서 저장하면 바뀐다 (UI 스레드에서만 쓴다)
+var llmAPIKey string
 
 type llmMessage struct {
 	Role    string `json:"role"` // "user" | "assistant"
 	Content string `json:"content"`
 }
 
-// 임시 응답 형식: {"reply":"..."} / {"answer":"..."} / OpenAI 호환 choices[0].message.content
+type llmRequest struct {
+	Model    string       `json:"model"`
+	Messages []llmMessage `json:"messages"`
+	Stream   bool         `json:"stream"` // Ollama는 기본이 스트리밍이라 꺼 둔다
+}
+
+// OpenAI 호환 choices[0].message.content 또는 Ollama message.content
 type llmReply struct {
-	Reply   string `json:"reply"`
-	Answer  string `json:"answer"`
 	Choices []struct {
 		Message llmMessage `json:"message"`
 	} `json:"choices"`
+	Message llmMessage `json:"message"`
 }
 
-// 대화 기록으로 LLM의 다음 답변을 받는다. 엔드포인트가 없으면 데모 응답
-func askLLM(history []chatMessage) (string, error) {
-	if cfgLLMEndpoint == "" {
-		return demoReply(history), nil
+// 추론(Think) 모델이 답변 앞에 붙이는 생각 과정
+var thinkBlock = regexp.MustCompile(`(?s)<think>.*?</think>`)
+
+// 대화 기록으로 LLM의 다음 답변을 받는다
+func askLLM(history []chatMessage, apiKey string) (string, error) {
+	if apiKey == "" {
+		return "", errors.New("API 키가 없어요. 펫을 오른쪽 클릭해서 [API 키 설정]으로 넣어 주세요")
 	}
 	body, err := buildLLMRequest(history)
 	if err != nil {
 		return "", err
 	}
-	respBody, err := postToLLM(body)
+	respBody, err := postToLLM(body, apiKey)
 	if err != nil {
 		return "", err
 	}
 	return parseLLMReply(respBody)
 }
 
-func demoReply(history []chatMessage) string {
-	last := history[len(history)-1].text
-	return "[LLM 미연결] chat.ini에 llm_endpoint를 설정하면 실제 답변을 받아요.\n입력: " + last
-}
-
-// 임시 요청 형식: {"messages":[{"role":"user","content":"..."}, ...]}
+// 대화 기록 전체를 messages로 보낸다 (이전 답변은 role=assistant)
 func buildLLMRequest(history []chatMessage) ([]byte, error) {
 	msgs := make([]llmMessage, 0, len(history))
 	for _, m := range history {
@@ -59,7 +77,7 @@ func buildLLMRequest(history []chatMessage) ([]byte, error) {
 		}
 		msgs = append(msgs, llmMessage{Role: role, Content: m.text})
 	}
-	return json.Marshal(map[string]any{"messages": msgs})
+	return json.Marshal(llmRequest{Model: llmModel, Messages: msgs})
 }
 
 func parseLLMReply(body []byte) (string, error) {
@@ -67,27 +85,33 @@ func parseLLMReply(body []byte) (string, error) {
 	if err := json.Unmarshal(body, &r); err != nil {
 		return "", fmt.Errorf("응답을 해석하지 못했어요: %w", err)
 	}
-	switch {
-	case r.Reply != "":
-		return r.Reply, nil
-	case r.Answer != "":
-		return r.Answer, nil
-	case len(r.Choices) > 0 && r.Choices[0].Message.Content != "":
-		return r.Choices[0].Message.Content, nil
+	content := r.Message.Content
+	if len(r.Choices) > 0 {
+		content = r.Choices[0].Message.Content
+	}
+	if answer := stripThinking(content); answer != "" {
+		return answer, nil
 	}
 	return "", errors.New("응답에 답변 내용이 없어요")
 }
 
-func postToLLM(body []byte) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodPost, cfgLLMEndpoint, bytes.NewReader(body))
+// <think>...</think> 부분을 지우고 실제 답변만 남긴다
+func stripThinking(content string) string {
+	content = thinkBlock.ReplaceAllString(content, "")
+	if _, after, found := strings.Cut(content, "</think>"); found { // 여는 태그 없이 닫는 태그만 온 경우
+		content = after
+	}
+	return strings.TrimSpace(content)
+}
+
+func postToLLM(body []byte, apiKey string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodPost, llmEndpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if cfgLLMAPIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+cfgLLMAPIKey)
-	}
-	client := &http.Client{Timeout: time.Duration(cfgLLMTimeoutSec * float64(time.Second))}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	client := &http.Client{Timeout: llmTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

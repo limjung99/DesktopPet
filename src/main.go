@@ -1,12 +1,12 @@
 // 데스크톱 펫 (Windows 전용, 외부 런타임 불필요)
 //
-// 조작: 왼쪽 클릭 = 점프 + 말풍선 / 드래그 = 집어서 던지기 / 더블클릭 = 대화 창 / 오른쪽 클릭 = 메뉴(대화하기, 말하기, 점프, 종료)
+// 조작: 왼쪽 클릭 = 점프 + 말풍선 / 드래그 = 집어서 던지기 / 더블클릭 = 대화 창 / 오른쪽 클릭 = 메뉴(대화하기, API 키 설정, 말하기, 점프, 종료)
+// LLM API 키: 첫 실행 때 입력 창이 뜬다. %APPDATA%\DesktopPet\llm_api_key.bin에 DPAPI로 암호화해 저장
 // 사용자 설정(선택, exe와 같은 폴더):
 //
 //	sprites\idle_0.png ...  캐릭터 이미지 교체
 //	lines.txt               말풍선 대사 (UTF-8, 한 줄에 하나)
 //	pet.ini                 scale=1.0 / walk_speed=2 / talk_chance=0.15
-//	chat.ini                사내 LLM API 주소·키 (chat.ini.example 참고)
 //
 // 파일 구성:
 //
@@ -21,8 +21,10 @@
 //	bubble.go     말풍선 텍스트 렌더링
 //	animation.go  스프라이트 로딩
 //	sprite.go     이미지 스케일링, 반전, 알파 합성
-//	config.go     pet.ini, chat.ini, lines.txt 읽기
-//	chat_llm.go   사내 LLM API 호출 (요청/응답 형식은 임시)
+//	config.go     pet.ini, lines.txt 읽기
+//	chat_llm.go   사내 LLM API 호출 (요청/응답 형식)
+//	apikey_store.go   API 키 암호화 저장/읽기 (DPAPI)
+//	apikey_window.go  API 키 입력 창
 //	chat.go       대화 상태, 전송, 응답 수신
 //	chat_window.go  채팅 창과 입력 컨트롤
 //	chat_view.go  대화 말풍선 목록 그리기
@@ -41,7 +43,7 @@ func main() {
 	}
 	enableDPIAwareness()
 	loadIni()
-	loadChatIni()
+	llmAPIKey = loadAPIKey()
 
 	p := newPet(systemDPIScale())
 	if p == nil { // 캐릭터 이미지를 찾지 못함
@@ -52,6 +54,9 @@ func main() {
 	p.render()
 	pShowWindow.Call(p.hwnd, SW_SHOWNOACTIVATE)
 	startTimers(p.hwnd)
+	if llmAPIKey == "" { // 첫 실행: API 키부터 받는다
+		openAPIKeyWindow(p.dpi)
+	}
 	if os.Getenv("PET_TEST") != "" { // 테스트용: 시작하자마자 말풍선
 		p.say("테스트 말풍선입니다", 30)
 	}

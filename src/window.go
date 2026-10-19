@@ -45,7 +45,7 @@ func runMessageLoop() {
 		if int32(r) <= 0 {
 			break
 		}
-		if handleChatEnter(&m) {
+		if handleChatEnter(&m) || handleAPIKeyEnter(&m) {
 			continue
 		}
 		pTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))

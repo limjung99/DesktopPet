@@ -13,6 +13,7 @@ const (
 	menuJump = 2
 	menuQuit = 3
 	menuChat = 4
+	menuKey  = 5
 )
 
 func cursor() point { var pt point; pGetCursorPos.Call(uintptr(unsafe.Pointer(&pt))); return pt }
@@ -114,6 +115,7 @@ func (p *pet) showContextMenu() uintptr {
 	m, _, _ := pCreatePopupMenu.Call()
 	defer pDestroyMenu.Call(m)
 	pAppendMenuW.Call(m, MF_STRING, menuChat, uintptr(unsafe.Pointer(u16("대화하기"))))
+	pAppendMenuW.Call(m, MF_STRING, menuKey, uintptr(unsafe.Pointer(u16("API 키 설정"))))
 	pAppendMenuW.Call(m, MF_STRING, menuSay, uintptr(unsafe.Pointer(u16("말하기"))))
 	pAppendMenuW.Call(m, MF_STRING, menuJump, uintptr(unsafe.Pointer(u16("점프"))))
 	pAppendMenuW.Call(m, MF_SEPARATOR, 0, 0)
@@ -128,6 +130,8 @@ func (p *pet) handleMenuCommand(cmd uintptr) {
 	switch cmd {
 	case menuChat:
 		p.openChat()
+	case menuKey:
+		openAPIKeyWindow(p.dpi)
 	case menuSay:
 		p.sayRandom()
 	case menuJump:

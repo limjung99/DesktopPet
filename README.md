@@ -21,9 +21,12 @@ Go로 만들었고 설치나 별도 런타임이 필요 없습니다.
 펫을 더블클릭하거나 오른쪽 클릭 메뉴의 **대화하기**를 누르면 채팅 창이 열립니다.
 메시지를 입력하고 `Enter`(또는 전송 버튼)를 누르면 됩니다. 창을 닫아도 대화 내용은 유지됩니다.
 
-사내 LLM API 연결은 `chat.ini`로 설정합니다. `chat.ini.example`을 `chat.ini`로 복사해 `llm_endpoint`를 채우세요.
-엔드포인트가 비어 있으면 데모 응답만 합니다. API 요청/응답 형식은 아직 임시이며,
-스펙이 확정되면 `src/chat_llm.go`의 `buildLLMRequest`, `parseLLMReply`만 고치면 됩니다.
+처음 실행하면 **API 키 입력 창**이 뜹니다. 사내 LLM API 키를 넣고 저장하면 바로 대화할 수 있습니다.
+키는 `%APPDATA%\DesktopPet\llm_api_key.bin`에 Windows 사용자 계정 기준(DPAPI)으로 암호화해 저장되므로,
+다음 실행부터는 묻지 않습니다. 키를 바꾸려면 오른쪽 클릭 메뉴의 **API 키 설정**을 누르세요.
+
+엔드포인트(`https://ollama.ai.koscom.co.kr`)와 모델(`Qwen-Inference-Think`)은 `src/chat_llm.go`의 상수입니다.
+추론 모델의 `<think>...</think>` 부분은 지우고 답변만 보여 줍니다.
 
 ## 다중 모니터
 
@@ -40,7 +43,6 @@ Go로 만들었고 설치나 별도 런타임이 필요 없습니다.
 | 파일 | 내용 |
 | --- | --- |
 | `pet.ini` | 크기(`scale`), 걷는 속도(`walk_speed`), 혼잣말 확률(`talk_chance`) |
-| `chat.ini` | 사내 LLM API 주소(`llm_endpoint`), 키(`llm_api_key`), 대기 시간(`llm_timeout_sec`) |
 | `lines.txt` | 말풍선 대사. 한 줄에 하나, `#`으로 시작하면 무시합니다 |
 | `sprites\` | 캐릭터 이미지 폴더. 아래 설명 참고 |
 

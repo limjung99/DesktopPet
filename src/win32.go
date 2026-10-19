@@ -9,10 +9,11 @@ import (
 )
 
 var (
-	user32 = syscall.NewLazyDLL("user32.dll")
-	gdi32  = syscall.NewLazyDLL("gdi32.dll")
-	kernel = syscall.NewLazyDLL("kernel32.dll")
-	shcore = syscall.NewLazyDLL("shcore.dll")
+	user32  = syscall.NewLazyDLL("user32.dll")
+	gdi32   = syscall.NewLazyDLL("gdi32.dll")
+	kernel  = syscall.NewLazyDLL("kernel32.dll")
+	shcore  = syscall.NewLazyDLL("shcore.dll")
+	crypt32 = syscall.NewLazyDLL("crypt32.dll")
 
 	pRegisterClassExW     = user32.NewProc("RegisterClassExW")
 	pCreateWindowExW      = user32.NewProc("CreateWindowExW")
@@ -56,7 +57,10 @@ var (
 	pFillRect             = user32.NewProc("FillRect")
 	pCreateMutexW         = kernel.NewProc("CreateMutexW")
 	pGetModuleHandleW     = kernel.NewProc("GetModuleHandleW")
+	pLocalFree            = kernel.NewProc("LocalFree")
 	pSetDpiAwareness      = shcore.NewProc("SetProcessDpiAwareness")
+	pCryptProtectData     = crypt32.NewProc("CryptProtectData")
+	pCryptUnprotectData   = crypt32.NewProc("CryptUnprotectData")
 
 	pCreateCompatibleDC = gdi32.NewProc("CreateCompatibleDC")
 	pCreateDIBSection   = gdi32.NewProc("CreateDIBSection")
@@ -129,12 +133,15 @@ const (
 const (
 	CS_DBLCLKS          = 0x8
 	WS_OVERLAPPEDWINDOW = 0x00CF0000
+	WS_CAPTION          = 0x00C00000
+	WS_SYSMENU          = 0x00080000
 	WS_CLIPCHILDREN     = 0x02000000
 	WS_CHILD            = 0x40000000
 	WS_VISIBLE          = 0x10000000
 	WS_TABSTOP          = 0x00010000
 	WS_EX_CLIENTEDGE    = 0x200
 	ES_AUTOHSCROLL      = 0x80
+	ES_PASSWORD         = 0x20
 	BS_DEFPUSHBUTTON    = 0x1
 	CW_USEDEFAULT       = 0x80000000
 	SW_HIDE             = 0
@@ -143,7 +150,16 @@ const (
 	IDC_ARROW           = 32512
 	SRCCOPY             = 0x00CC0020
 	NULL_PEN            = 8
+	COLOR_BTNFACE       = 15
 )
+
+// DPAPI (현재 Windows 사용자 계정으로만 풀 수 있는 암호화)
+const CRYPTPROTECT_UI_FORBIDDEN = 0x1
+
+type dataBlob struct {
+	Size uint32
+	Data *byte
+}
 
 // 메뉴
 const (
