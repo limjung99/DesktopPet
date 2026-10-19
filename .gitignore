@@ -7,3 +7,6 @@ src/*.exe
 
 # macOS
 .DS_Store
+
+# 로컬 문서
+DesktopPet.pdf
